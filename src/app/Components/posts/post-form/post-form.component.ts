@@ -1,4 +1,5 @@
 import { formatDate } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import {
   UntypedFormBuilder,
@@ -7,6 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { CategoryDTO } from 'src/app/Models/category.dto';
 import { PostDTO } from 'src/app/Models/post.dto';
 import { CategoryService } from 'src/app/Services/category.service';
@@ -85,18 +87,21 @@ export class PostFormComponent implements OnInit {
     });
   }
 
-  private async loadCategories(): Promise<void> {
+  private loadCategories(): void {
     let errorResponse: any;
     const userId = this.localStorageService.get('user_id');
     if (userId) {
-      try {
-        this.categoriesList = await this.categoryService.getCategoriesByUserId(
-          userId
-        );
-      } catch (error: any) {
-        errorResponse = error.error;
-        this.sharedService.errorLog(errorResponse);
-      }
+      this.categoryService.getCategoriesByUserId(userId)
+      .subscribe(
+        (categories) => {
+          this.categoriesList = categories;
+        },
+
+        (error: any) => { 
+          errorResponse = error.error;
+          this.sharedService.errorLog(errorResponse);
+        }
+      )
     }
   }
 
@@ -105,97 +110,114 @@ export class PostFormComponent implements OnInit {
     // update
     if (this.postId) {
       this.isUpdateMode = true;
-      try {
-        this.post = await this.postService.getPostById(this.postId);
+      this.postService.getPostById(this.postId)
+      .subscribe(
+        (post) => {
+          this.post = post;
 
-        this.title.setValue(this.post.title);
+          this.title.setValue(this.post.title);
 
-        this.description.setValue(this.post.description);
-
-        this.publication_date.setValue(
-          formatDate(this.post.publication_date, 'yyyy-MM-dd', 'en')
-        );
-
-        let categoriesIds: string[] = [];
-        this.post.categories.forEach((cat: CategoryDTO) => {
-          categoriesIds.push(cat.categoryId);
-        });
-
-        this.categories.setValue(categoriesIds);
-
-        this.num_likes.setValue(this.post.num_likes);
-        this.num_dislikes.setValue(this.post.num_dislikes);
-
-        this.postForm = this.formBuilder.group({
-          title: this.title,
-          description: this.description,
-          publication_date: this.publication_date,
-          categories: this.categories,
-          num_likes: this.num_likes,
-          num_dislikes: this.num_dislikes,
-        });
-      } catch (error: any) {
-        errorResponse = error.error;
-        this.sharedService.errorLog(errorResponse);
-      }
+          this.description.setValue(this.post.description);
+  
+          this.publication_date.setValue(
+            formatDate(this.post.publication_date, 'yyyy-MM-dd', 'en')
+          );
+  
+          let categoriesIds: string[] = [];
+          this.post.categories.forEach((cat: CategoryDTO) => {
+            categoriesIds.push(cat.categoryId);
+          });
+  
+          this.categories.setValue(categoriesIds);
+  
+          this.num_likes.setValue(this.post.num_likes);
+          this.num_dislikes.setValue(this.post.num_dislikes);
+  
+          this.postForm = this.formBuilder.group({
+            title: this.title,
+            description: this.description,
+            publication_date: this.publication_date,
+            categories: this.categories,
+            num_likes: this.num_likes,
+            num_dislikes: this.num_dislikes,
+          });
+        },
+        (error: any) => {
+          errorResponse = error.error;
+          this.sharedService.errorLog(errorResponse);
+        }
+      )
     }
   }
 
-  private async editPost(): Promise<boolean> {
+  private editPost(): void {
     let errorResponse: any;
     let responseOK: boolean = false;
     if (this.postId) {
       const userId = this.localStorageService.get('user_id');
       if (userId) {
         this.post.userId = userId;
-        try {
-          await this.postService.updatePost(this.postId, this.post);
-          responseOK = true;
-        } catch (error: any) {
-          errorResponse = error.error;
-          this.sharedService.errorLog(errorResponse);
-        }
+        this.postService.updatePost(this.postId, this.post)
+        .pipe(
+          finalize(async () => {
+            await this.sharedService.managementToast(
+              'postFeedback',
+              responseOK,
+              errorResponse
+            );
 
-        await this.sharedService.managementToast(
-          'postFeedback',
-          responseOK,
-          errorResponse
-        );
+            if (responseOK){
+              this.router.navigateByUrl('posts')
+            }
 
-        if (responseOK) {
-          this.router.navigateByUrl('posts');
-        }
+          })
+        )
+        .subscribe(
+          () => {
+            responseOK = true;
+          },
+
+          (error: HttpErrorResponse) => {
+            errorResponse = error.error;
+            this.sharedService.errorLog(errorResponse);
+          }
+        )
       }
     }
-    return responseOK;
   }
 
-  private async createPost(): Promise<boolean> {
+  private createPost(): void {
     let errorResponse: any;
     let responseOK: boolean = false;
     const userId = this.localStorageService.get('user_id');
     if (userId) {
       this.post.userId = userId;
-      try {
-        await this.postService.createPost(this.post);
-        responseOK = true;
-      } catch (error: any) {
-        errorResponse = error.error;
-        this.sharedService.errorLog(errorResponse);
-      }
+      this.postService.createPost(this.post)
+      .pipe(
+        finalize(async () => {
+          await this.sharedService.managementToast(
+            'postFeedback',
+            responseOK,
+            errorResponse
+          );
 
-      await this.sharedService.managementToast(
-        'postFeedback',
-        responseOK,
-        errorResponse
-      );
+          if (responseOK){
+            this.router.navigateByUrl('posts')
+          }
 
-      if (responseOK) {
-        this.router.navigateByUrl('posts');
-      }
+        })
+      )
+      .subscribe(
+        () => {
+          responseOK = true;
+        },
+
+        (error: HttpErrorResponse) => {
+          errorResponse = error.error;
+          this.sharedService.errorLog(errorResponse);
+        }
+      )
     }
-
-    return responseOK;
   }
 
   async savePost() {
@@ -209,9 +231,9 @@ export class PostFormComponent implements OnInit {
     this.post = this.postForm.value;
 
     if (this.isUpdateMode) {
-      this.validRequest = await this.editPost();
+      this.editPost();
     } else {
-      this.validRequest = await this.createPost();
+      this.createPost();
     }
   }
 }

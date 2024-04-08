@@ -19,8 +19,8 @@ export class DashboardComponent implements OnInit {
     private sharedService: SharedService
   ) {}
 
-  async ngOnInit(): Promise<void> {
-    await this.loadPosts();
+  ngOnInit(): void {
+    this.loadPosts();
 
     this.posts.forEach((post) => {
       this.numLikes = this.numLikes + post.num_likes;
@@ -28,13 +28,18 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  private async loadPosts(): Promise<void> {
+  private loadPosts(): void {
     let errorResponse: any;
-    try {
-      this.posts = await this.postService.getPosts();
-    } catch (error: any) {
-      errorResponse = error.error;
-      this.sharedService.errorLog(errorResponse);
-    }
+    this.postService.getPosts()
+    .subscribe(
+      (posts) => {
+        this.posts = posts;
+      },
+      (error: any) => {
+        errorResponse = error.error;
+        this.sharedService.errorLog(errorResponse);
+      }
+    )
   }
+
 }

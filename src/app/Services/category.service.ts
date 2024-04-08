@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { CategoryDTO } from '../Models/category.dto';
+import { Observable } from 'rxjs';
 
 interface deleteResponse {
   affected: number;
@@ -18,37 +19,32 @@ export class CategoryService {
     this.urlBlogUocApi = 'http://localhost:3000/' + this.controller;
   }
 
-  getCategoriesByUserId(userId: string): Promise<CategoryDTO[]> {
+  getCategoriesByUserId(userId: string): Observable<CategoryDTO[]> {
     return this.http
       .get<CategoryDTO[]>('http://localhost:3000/users/categories/' + userId)
-      .toPromise();
   }
 
-  createCategory(category: CategoryDTO): Promise<CategoryDTO> {
+  createCategory(category: CategoryDTO): Observable<CategoryDTO> {
     return this.http
       .post<CategoryDTO>(this.urlBlogUocApi, category)
-      .toPromise();
   }
 
-  getCategoryById(categoryId: string): Promise<CategoryDTO> {
+  getCategoryById(categoryId: string): Observable<CategoryDTO>{
     return this.http
       .get<CategoryDTO>(this.urlBlogUocApi + '/' + categoryId)
-      .toPromise();
   }
 
   updateCategory(
     categoryId: string,
     category: CategoryDTO
-  ): Promise<CategoryDTO> {
+  ): Observable<CategoryDTO> {
     return this.http
       .put<CategoryDTO>(this.urlBlogUocApi + '/' + categoryId, category)
-      .toPromise();
   }
 
   // delete category (si esta vinculada a un post no dixarem eliminar)
-  deleteCategory(categoryId: string): Promise<deleteResponse> {
+  deleteCategory(categoryId: string): Observable<deleteResponse> {
     return this.http
       .delete<deleteResponse>(this.urlBlogUocApi + '/' + categoryId)
-      .toPromise();
   }
 }

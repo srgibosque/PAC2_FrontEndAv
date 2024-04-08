@@ -6,6 +6,8 @@ import {
   UntypedFormGroup,
   Validators,
 } from '@angular/forms';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { UserDTO } from 'src/app/Models/user.dto';
 import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { SharedService } from 'src/app/Services/shared.service';
@@ -34,7 +36,8 @@ export class ProfileComponent implements OnInit {
     private formBuilder: UntypedFormBuilder,
     private userService: UserService,
     private sharedService: SharedService,
-    private localStorageService: LocalStorageService
+    private localStorageService: LocalStorageService,
+    private router: Router
   ) {
     this.profileUser = new UserDTO('', '', '', '', new Date(), '', '');
 
@@ -89,41 +92,45 @@ export class ProfileComponent implements OnInit {
     });
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
     let errorResponse: any;
 
     // load user data
     const userId = this.localStorageService.get('user_id');
     if (userId) {
-      try {
-        const userData = await this.userService.getUSerById(userId);
+      this.userService.getUSerById(userId)
+      .subscribe(
 
-        this.name.setValue(userData.name);
-        this.surname_1.setValue(userData.surname_1);
-        this.surname_2.setValue(userData.surname_2);
-        this.alias.setValue(userData.alias);
-        this.birth_date.setValue(
-          formatDate(userData.birth_date, 'yyyy-MM-dd', 'en')
-        );
-        this.email.setValue(userData.email);
+        (userData) => {
+          this.name.setValue(userData.name);
+          this.surname_1.setValue(userData.surname_1);
+          this.surname_2.setValue(userData.surname_2);
+          this.alias.setValue(userData.alias);
+          this.birth_date.setValue(
+            formatDate(userData.birth_date, 'yyyy-MM-dd', 'en')
+          );
+          this.email.setValue(userData.email);
 
-        this.profileForm = this.formBuilder.group({
-          name: this.name,
-          surname_1: this.surname_1,
-          surname_2: this.surname_2,
-          alias: this.alias,
-          birth_date: this.birth_date,
-          email: this.email,
-          password: this.password,
-        });
-      } catch (error: any) {
-        errorResponse = error.error;
-        this.sharedService.errorLog(errorResponse);
-      }
+          this.profileForm = this.formBuilder.group({
+            name: this.name,
+            surname_1: this.surname_1,
+            surname_2: this.surname_2,
+            alias: this.alias,
+            birth_date: this.birth_date,
+            email: this.email,
+            password: this.password,
+          });
+        },
+
+        (error: any) => {
+          errorResponse = error.error;
+          this.sharedService.errorLog(errorResponse);
+        }
+      )
     }
   }
 
-  async updateUser(): Promise<void> {
+  updateUser(): void {
     let responseOK: boolean = false;
     this.isValidForm = false;
     let errorResponse: any;
@@ -138,21 +145,30 @@ export class ProfileComponent implements OnInit {
     const userId = this.localStorageService.get('user_id');
 
     if (userId) {
-      try {
-        await this.userService.updateUser(userId, this.profileUser);
-        responseOK = true;
-      } catch (error: any) {
-        responseOK = false;
-        errorResponse = error.error;
+      this.userService.updateUser(userId, this.profileUser)
+      .pipe(
+        finalize(async () => {
+          await this.sharedService.managementToast(
+            'profileFeedback',
+            responseOK,
+            errorResponse
+          );
 
-        this.sharedService.errorLog(errorResponse);
-      }
+          this.router.navigateByUrl('home');
+        })
+      )
+      .subscribe(
+        () => {
+          responseOK = true;
+        },
+
+        (error: any) => {
+          responseOK = false;
+          errorResponse = error.error;
+
+          this.sharedService.errorLog(errorResponse);
+        }
+      )
     }
-
-    await this.sharedService.managementToast(
-      'profileFeedback',
-      responseOK,
-      errorResponse
-    );
   }
 }

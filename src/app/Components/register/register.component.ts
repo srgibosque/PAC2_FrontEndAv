@@ -7,6 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { HeaderMenus } from 'src/app/Models/header-menus.dto';
 import { UserDTO } from 'src/app/Models/user.dto';
 import { HeaderMenusService } from 'src/app/Services/header-menus.service';
@@ -94,7 +95,7 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {}
 
-  async register(): Promise<void> {
+  register(): void {
     let responseOK: boolean = false;
     this.isValidForm = false;
     let errorResponse: any;
@@ -106,34 +107,41 @@ export class RegisterComponent implements OnInit {
     this.isValidForm = true;
     this.registerUser = this.registerForm.value;
 
-    try {
-      await this.userService.register(this.registerUser);
-      responseOK = true;
-    } catch (error: any) {
-      responseOK = false;
-      errorResponse = error.error;
+    this.userService.register(this.registerUser)
+    .pipe(
+      finalize(async () => {
+        await this.sharedService.managementToast(
+          'categoryFeedback',
+          responseOK,
+          errorResponse
+        );
 
-      const headerInfo: HeaderMenus = {
-        showAuthSection: false,
-        showNoAuthSection: true,
-      };
-      this.headerMenusService.headerManagement.next(headerInfo);
+        if (responseOK){
+           // Reset the form
+          this.registerForm.reset();
+          // After reset form we set birthDate to today again (is an example)
+          this.birth_date.setValue(formatDate(new Date(), 'yyyy-MM-dd', 'en'));
+          this.router.navigateByUrl('home');
+        }
+      })
+    )
+    .subscribe(
+      () => {
+        responseOK = true;
+      },
+      (error:any) => {
+        responseOK = false;
+        errorResponse = error.error;
 
-      this.sharedService.errorLog(errorResponse);
-    }
+        const headerInfo: HeaderMenus = {
+          showAuthSection: false,
+          showNoAuthSection: true,
+        };
 
-    await this.sharedService.managementToast(
-      'registerFeedback',
-      responseOK,
-      errorResponse
-    );
-
-    if (responseOK) {
-      // Reset the form
-      this.registerForm.reset();
-      // After reset form we set birthDate to today again (is an example)
-      this.birth_date.setValue(formatDate(new Date(), 'yyyy-MM-dd', 'en'));
-      this.router.navigateByUrl('home');
-    }
+        this.headerMenusService.headerManagement.next(headerInfo);
+  
+        this.sharedService.errorLog(errorResponse);
+      }
+    )
   }
 }
