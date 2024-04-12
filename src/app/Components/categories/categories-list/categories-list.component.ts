@@ -28,9 +28,9 @@ export class CategoriesListComponent {
 
   private loadCategories(): void {
     let errorResponse: any;
-    let userId: string | null;
+    
     this.store.select('authApp').subscribe((authResponse) => {
-      userId = authResponse.credentials.user_id;
+      const userId = authResponse.credentials.user_id;
 
       if (userId) {
         this.categoryService.getCategoriesByUserId(userId)
