@@ -7,11 +7,13 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { finalize, map, take } from 'rxjs';
+import { AuthState } from 'src/app/Auth/reducers';
 import { UserDTO } from 'src/app/Models/user.dto';
-import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { SharedService } from 'src/app/Services/shared.service';
 import { UserService } from 'src/app/Services/user.service';
+import { AppState } from 'src/app/app.reducer';
 
 @Component({
   selector: 'app-profile',
@@ -36,8 +38,8 @@ export class ProfileComponent implements OnInit {
     private formBuilder: UntypedFormBuilder,
     private userService: UserService,
     private sharedService: SharedService,
-    private localStorageService: LocalStorageService,
-    private router: Router
+    private router: Router,
+    private store: Store<AppState>
   ) {
     this.profileUser = new UserDTO('', '', '', '', new Date(), '', '');
 
@@ -96,38 +98,43 @@ export class ProfileComponent implements OnInit {
     let errorResponse: any;
 
     // load user data
-    const userId = this.localStorageService.get('user_id');
-    if (userId) {
-      this.userService.getUSerById(userId)
-      .subscribe(
-
-        (userData) => {
-          this.name.setValue(userData.name);
-          this.surname_1.setValue(userData.surname_1);
-          this.surname_2.setValue(userData.surname_2);
-          this.alias.setValue(userData.alias);
-          this.birth_date.setValue(
-            formatDate(userData.birth_date, 'yyyy-MM-dd', 'en')
-          );
-          this.email.setValue(userData.email);
-
-          this.profileForm = this.formBuilder.group({
-            name: this.name,
-            surname_1: this.surname_1,
-            surname_2: this.surname_2,
-            alias: this.alias,
-            birth_date: this.birth_date,
-            email: this.email,
-            password: this.password,
-          });
-        },
-
-        (error: any) => {
-          errorResponse = error.error;
-          this.sharedService.errorLog(errorResponse);
-        }
-      )
-    }
+    // const userId = this.localStorageService.get('user_id');
+    this.store.select('authApp').pipe(
+      map((response: AuthState) => response.credentials.user_id),
+      take(1)
+    ).subscribe((userId) => {
+      if (userId) {
+        this.userService.getUSerById(userId)
+        .subscribe(
+  
+          (userData) => {
+            this.name.setValue(userData.name);
+            this.surname_1.setValue(userData.surname_1);
+            this.surname_2.setValue(userData.surname_2);
+            this.alias.setValue(userData.alias);
+            this.birth_date.setValue(
+              formatDate(userData.birth_date, 'yyyy-MM-dd', 'en')
+            );
+            this.email.setValue(userData.email);
+  
+            this.profileForm = this.formBuilder.group({
+              name: this.name,
+              surname_1: this.surname_1,
+              surname_2: this.surname_2,
+              alias: this.alias,
+              birth_date: this.birth_date,
+              email: this.email,
+              password: this.password,
+            });
+          },
+  
+          (error: any) => {
+            errorResponse = error.error;
+            this.sharedService.errorLog(errorResponse);
+          }
+        )
+      }
+    })
   }
 
   updateUser(): void {
@@ -142,33 +149,39 @@ export class ProfileComponent implements OnInit {
     this.isValidForm = true;
     this.profileUser = this.profileForm.value;
 
-    const userId = this.localStorageService.get('user_id');
+    // const userId = this.localStorageService.get('user_id');
+    this.store.select('authApp').pipe(
+      map((response:AuthState) => response.credentials.user_id),
+      take(1)
+    ).subscribe((userId) => {
 
-    if (userId) {
-      this.userService.updateUser(userId, this.profileUser)
-      .pipe(
-        finalize(async () => {
-          await this.sharedService.managementToast(
-            'profileFeedback',
-            responseOK,
-            errorResponse
-          );
+      if (userId) {
+        this.userService.updateUser(userId, this.profileUser)
+        .pipe(
+          finalize(async () => {
+            await this.sharedService.managementToast(
+              'profileFeedback',
+              responseOK,
+              errorResponse
+            );
+  
+            this.router.navigateByUrl('home');
+          })
+        )
+        .subscribe(
+          () => {
+            responseOK = true;
+          },
+  
+          (error: any) => {
+            responseOK = false;
+            errorResponse = error.error;
+  
+            this.sharedService.errorLog(errorResponse);
+          }
+        )
+      }
+    })
 
-          this.router.navigateByUrl('home');
-        })
-      )
-      .subscribe(
-        () => {
-          responseOK = true;
-        },
-
-        (error: any) => {
-          responseOK = false;
-          errorResponse = error.error;
-
-          this.sharedService.errorLog(errorResponse);
-        }
-      )
-    }
   }
 }
