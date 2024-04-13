@@ -1,10 +1,7 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { HeaderMenus } from 'src/app/Models/header-menus.dto';
 import { PostDTO } from 'src/app/Models/post.dto';
-import { HeaderMenusService } from 'src/app/Services/header-menus.service';
-import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { PostService } from 'src/app/Services/post.service';
 import { SharedService } from 'src/app/Services/shared.service';
 import { AppState } from 'src/app/app.reducer';
@@ -20,11 +17,9 @@ export class HomeComponent {
 
   constructor(
     private postService: PostService,
-    private localStorageService: LocalStorageService,
     private sharedService: SharedService,
     private store: Store<AppState>,
     private router: Router,
-    private headerMenusService: HeaderMenusService
   ) {
     this.showButtons = false;
     this.loadPosts();
