@@ -8,13 +8,16 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Store } from '@ngrx/store';
+import { finalize, map, take } from 'rxjs';
+import { AuthState } from 'src/app/Auth/reducers';
 import { CategoryDTO } from 'src/app/Models/category.dto';
 import { PostDTO } from 'src/app/Models/post.dto';
 import { CategoryService } from 'src/app/Services/category.service';
 import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { PostService } from 'src/app/Services/post.service';
 import { SharedService } from 'src/app/Services/shared.service';
+import { AppState } from 'src/app/app.reducer';
 
 @Component({
   selector: 'app-post-form',
@@ -46,7 +49,8 @@ export class PostFormComponent implements OnInit {
     private router: Router,
     private sharedService: SharedService,
     private localStorageService: LocalStorageService,
-    private categoryService: CategoryService
+    private categoryService: CategoryService,
+    private store: Store<AppState>
   ) {
     this.isValidForm = null;
     this.postId = this.activatedRoute.snapshot.paramMap.get('id');
@@ -89,23 +93,30 @@ export class PostFormComponent implements OnInit {
 
   private loadCategories(): void {
     let errorResponse: any;
-    const userId = this.localStorageService.get('user_id');
-    if (userId) {
-      this.categoryService.getCategoriesByUserId(userId)
-      .subscribe(
-        (categories) => {
-          this.categoriesList = categories;
-        },
+    // const userId = this.localStorageService.get('user_id');
+    this.store.select('authApp').pipe(
+      map((response: AuthState) => response.credentials.user_id),
+      take(1)
+    ).subscribe((userId) => {
+      if (userId) {
+        this.categoryService.getCategoriesByUserId(userId)
+        .subscribe(
+          (categories) => {
+            this.categoriesList = categories;
+          },
+  
+          (error: any) => { 
+            errorResponse = error.error;
+            this.sharedService.errorLog(errorResponse);
+          }
+        )
+      }
+    })
 
-        (error: any) => { 
-          errorResponse = error.error;
-          this.sharedService.errorLog(errorResponse);
-        }
-      )
-    }
+
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
     let errorResponse: any;
     // update
     if (this.postId) {
@@ -154,10 +165,54 @@ export class PostFormComponent implements OnInit {
     let errorResponse: any;
     let responseOK: boolean = false;
     if (this.postId) {
-      const userId = this.localStorageService.get('user_id');
+      // const userId = this.localStorageService.get('user_id');
+      this.store.select('authApp').pipe(
+        map((response: AuthState) => response.credentials.user_id),
+        take(1)
+      ).subscribe((userId) => {
+        if (userId) {
+          this.post.userId = userId;
+          this.postService.updatePost(this.postId!, this.post)
+          .pipe(
+            finalize(async () => {
+              await this.sharedService.managementToast(
+                'postFeedback',
+                responseOK,
+                errorResponse
+              );
+  
+              if (responseOK){
+                this.router.navigateByUrl('posts')
+              }
+  
+            })
+          )
+          .subscribe(
+            () => {
+              responseOK = true;
+            },
+  
+            (error: HttpErrorResponse) => {
+              errorResponse = error.error;
+              this.sharedService.errorLog(errorResponse);
+            }
+          )
+        }
+      })
+    }
+  }
+
+  private createPost(): void {
+    let errorResponse: any;
+    let responseOK: boolean = false;
+    // const userId = this.localStorageService.get('user_id');
+    this.store.select('authApp').pipe(
+      map((response: AuthState) => response.credentials.user_id),
+      take(1)
+    ).subscribe((userId) => {
       if (userId) {
         this.post.userId = userId;
-        this.postService.updatePost(this.postId, this.post)
+        this.postService.createPost(this.post)
         .pipe(
           finalize(async () => {
             await this.sharedService.managementToast(
@@ -165,62 +220,28 @@ export class PostFormComponent implements OnInit {
               responseOK,
               errorResponse
             );
-
+  
             if (responseOK){
               this.router.navigateByUrl('posts')
             }
-
+  
           })
         )
         .subscribe(
           () => {
             responseOK = true;
           },
-
+  
           (error: HttpErrorResponse) => {
             errorResponse = error.error;
             this.sharedService.errorLog(errorResponse);
           }
         )
       }
-    }
+    })
   }
 
-  private createPost(): void {
-    let errorResponse: any;
-    let responseOK: boolean = false;
-    const userId = this.localStorageService.get('user_id');
-    if (userId) {
-      this.post.userId = userId;
-      this.postService.createPost(this.post)
-      .pipe(
-        finalize(async () => {
-          await this.sharedService.managementToast(
-            'postFeedback',
-            responseOK,
-            errorResponse
-          );
-
-          if (responseOK){
-            this.router.navigateByUrl('posts')
-          }
-
-        })
-      )
-      .subscribe(
-        () => {
-          responseOK = true;
-        },
-
-        (error: HttpErrorResponse) => {
-          errorResponse = error.error;
-          this.sharedService.errorLog(errorResponse);
-        }
-      )
-    }
-  }
-
-  async savePost() {
+  savePost() {
     this.isValidForm = false;
 
     if (this.postForm.invalid) {
