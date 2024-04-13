@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { LoginComponent } from './components/login/login.component';
 import { AppRoutingModule } from '../app-routing.module';
 import { ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { StoreModule } from '@ngrx/store';
 import { authReducer } from './reducers/auth.reducer';
 import { StoreDevtoolsModule } from '@ngrx/store-devtools';
@@ -11,6 +11,7 @@ import { environment } from 'src/environments/environment';
 import { appReducers } from '../app.reducer';
 import { EffectsModule } from '@ngrx/effects';
 import { EffectsArray } from './effects';
+import { AuthInterceptorService } from '../Services/auth-interceptor.service';
 
 
 
@@ -30,6 +31,6 @@ import { EffectsArray } from './effects';
       logOnly: environment.production
     }),
   ],
-  exports: [LoginComponent]
+  exports: [LoginComponent],
 })
 export class AuthModule { }

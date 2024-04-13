@@ -11,7 +11,9 @@ import { CategoryDTO } from 'src/app/Models/category.dto';
 import { CategoryService } from 'src/app/Services/category.service';
 import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { SharedService } from 'src/app/Services/shared.service';
-import { finalize } from 'rxjs';
+import { catchError, finalize, map, take, throwError } from 'rxjs';
+import { AppState } from 'src/app/app.reducer';
+import { Store } from '@ngrx/store';
 
 @Component({
   selector: 'app-category-form',
@@ -37,7 +39,7 @@ export class CategoryFormComponent implements OnInit {
     private formBuilder: UntypedFormBuilder,
     private router: Router,
     private sharedService: SharedService,
-    private localStorageService: LocalStorageService
+    private store: Store<AppState>
   ) {
     this.isValidForm = null;
     this.categoryId = this.activatedRoute.snapshot.paramMap.get('id');
@@ -122,11 +124,54 @@ export class CategoryFormComponent implements OnInit {
     let errorResponse: any;
     let responseOK: boolean = false;
     if (this.categoryId) {
-      const userId = this.localStorageService.get('user_id');
-      if (userId) {
+
+      this.store.select('authApp').pipe(
+        map((response) => response.credentials.user_id),
+        take(1)
+      ).subscribe((userId) => {
+        if(userId){
+          this.category.userId = userId;
+          this.categoryService.updateCategory(this.categoryId!, this.category)
+          .pipe(
+            catchError((error: HttpErrorResponse) => {
+              this.sharedService.errorLog(error.error);
+              return throwError(error);
+            }),
+            finalize(async () => {
+              await this.sharedService.managementToast(
+                'categoryFeedback',
+                responseOK,
+                errorResponse
+              );
+
+              if (responseOK) {
+                this.router.navigateByUrl('categories');
+              }
+            })
+          )
+          .subscribe(() => {
+            responseOK = true;
+          })
+        }
+      })
+    }
+  }
+
+  private createCategory(): void {
+    let errorResponse: any;
+    let responseOK: boolean = false;
+    this.store.select('authApp').pipe(
+      map((response) => response.credentials.user_id),
+      take(1)
+    ).subscribe((userId) => {
+      if(userId){
         this.category.userId = userId;
-        this.categoryService.updateCategory(this.categoryId, this.category)
+        this.categoryService.createCategory(this.category)
         .pipe(
+          catchError((error: HttpErrorResponse) => {
+            this.sharedService.errorLog(error.error);
+            return throwError(error);
+          }),
           finalize(async () => {
             await this.sharedService.managementToast(
               'categoryFeedback',
@@ -134,59 +179,16 @@ export class CategoryFormComponent implements OnInit {
               errorResponse
             );
 
-            if (responseOK){
-              this.router.navigateByUrl('categories')
+            if (responseOK) {
+              this.router.navigateByUrl('categories');
             }
-
           })
         )
-        .subscribe(
-          () => {
-            responseOK = true;
-          },
-
-          (error: HttpErrorResponse) => {
-            errorResponse = error.error;
-            this.sharedService.errorLog(errorResponse);
-          }
-        )
-      }
-    }
-  }
-
-  private createCategory(): void {
-    let errorResponse: any;
-    let responseOK: boolean = false;
-    const userId = this.localStorageService.get('user_id');
-    if (userId) {
-      this.category.userId = userId;
-
-      this.categoryService.createCategory(this.category)
-      .pipe(
-        finalize(async () => {
-          await this.sharedService.managementToast(
-            'categoryFeedback',
-            responseOK,
-            errorResponse
-          );
-
-          if (responseOK){
-            this.router.navigateByUrl('categories')
-          }
-
-        })
-      )
-      .subscribe(
-        () => {
+        .subscribe(() => {
           responseOK = true;
-        },
-
-        (error: HttpErrorResponse) => {
-          errorResponse = error.error;
-          this.sharedService.errorLog(errorResponse);
-        }
-      )
-    }
+        })
+      }
+    })
   }
 
   saveCategory() {
