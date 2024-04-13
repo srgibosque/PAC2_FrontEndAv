@@ -2,10 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { logout } from '../../Auth/actions';
-import { HeaderMenus } from 'src/app/Models/header-menus.dto';
-import { HeaderMenusService } from 'src/app/Services/header-menus.service';
-import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { AppState } from 'src/app/app.reducer';
+import { AuthState } from 'src/app/Auth/reducers';
+import { map } from 'rxjs';
 
 @Component({
   selector: 'app-header',
@@ -18,8 +17,6 @@ export class HeaderComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private headerMenusService: HeaderMenusService,
-    private localStorageService: LocalStorageService,
     private store: Store<AppState>
   ) {
     this.showAuthSection = false;
@@ -27,8 +24,11 @@ export class HeaderComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.store.select('authApp').subscribe((authResponse) => {
-      if(authResponse.credentials.access_token){
+    this.store.select('authApp').pipe(
+      map((response: AuthState) => response.credentials.access_token)
+    )
+    .subscribe((access_token) => {
+      if(access_token){
         this.showAuthSection = true;
         this.showNoAuthSection = false;
       } else {

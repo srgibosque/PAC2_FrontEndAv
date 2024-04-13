@@ -10,8 +10,6 @@ import { finalize } from 'rxjs';
 import { AuthDTO } from 'src/app/Auth/models/auth.dto';
 import { HeaderMenus } from 'src/app/Models/header-menus.dto';
 import { AuthService } from 'src/app/Auth/services/auth.service';
-import { HeaderMenusService } from 'src/app/Services/header-menus.service';
-import { LocalStorageService } from 'src/app/Services/local-storage.service';
 import { SharedService } from 'src/app/Services/shared.service';
 import { Store } from '@ngrx/store';
 import { login } from '../../actions';
@@ -32,8 +30,6 @@ export class LoginComponent implements OnInit {
     private formBuilder: UntypedFormBuilder,
     private authService: AuthService,
     private sharedService: SharedService,
-    private headerMenusService: HeaderMenusService,
-    private localStorageService: LocalStorageService,
     private router: Router,
     private store: Store<AppState>
   ) {
