@@ -38,21 +38,6 @@ export class AuthInterceptorService implements HttpInterceptor {
       }),
     );
   }
-
-  // intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
-  //   const access_token = this.localStorageService.get('access_token');
-  //   if (access_token) {
-  //     req = req.clone({
-  //       setHeaders: {
-  //         'Content-Type': 'application/json; charset=utf-8',
-  //         Accept: 'application/json',
-  //         Authorization: `Bearer ${access_token}`,
-  //       },
-  //     });
-  //   }
-
-  //   return next.handle(req);
-  // }
 }
 
  
